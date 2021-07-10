@@ -1,86 +1,65 @@
 import random
 import math
-import sys
-import pygame
-import timeit, time
 import numpy as np
 
 from envs.distance_graph import DistanceGraph
 
-show_animation = True
 
-XDIM = 800
-YDIM = 600
-windowSize = [XDIM, YDIM]
-
-pygame.init()
-fpsClock = pygame.time.Clock()
-
-screen = pygame.display.set_mode(windowSize)
-pygame.display.set_caption('Performing RRT')
-
-
-class RRT():
+class RRT:
     """
     Class for RRT Planning
     """
 
-    def __init__(self, initial_pos, goal_pos, obstacle_list, graph: DistanceGraph, expandDis=15.0, goalSampleRate=10):
+    def __init__(self, initial_pos, goal_pos, graph: DistanceGraph, expandDis=1.0, goalSampleRate=10):
 
         self.start = initial_pos
         self.end = goal_pos
+
+        # obstacles is list with entries of form: [m_x, m_y, m_z, l, w, h], same format as in mujoco
         self.obstacle_list = graph.obstacles
+        # 0 entry means "no obstacle", 1 entry means "obstacle", at the corresponding vertex
+        # is_obstacle fct
         self.graph = graph
         self.expandDis = expandDis
         self.goalSampleRate = goalSampleRate
 
-    def Planning(self):
+    def plan_paths(self):
         """
         Path planning
         """
-        self.nodeList = {0:self.start}
-        i = 0
-
-        while True:
-            print(i)
-
+        self.created_nodes = {0:self.start}
+        n = 50
+        for i in range(n):
+            # get random point of the env
             rnd = self.get_random_point()
-            nind = self.GetNearestListIndex(rnd) # get nearest node index of the graph to random point
-            newNode = self.steer(rnd, nind) # generate new node from that nearest node in direction of random point
+            grid_point = None
+            # get nearest node index of the graph to random point
+            while grid_point is None:
+                grid_point = self.graph.coords2gridpoint(rnd)
+            # rnd_node: [i, j, k]
+            rnd_node = Node(grid_point)
+            # generate new node in direction of random point
+            direction_node = self.steer(rnd, rnd_node)
 
-            if self.__CollisionCheck(newNode, self.obstacle_list): # if it does not collide
+            nearinds = self.find_near_nodes(direction_node, 2)  # find nearest nodes to newNode
+            newNode = self.choose_parent(direction_node,
+                                         nearinds)  # from that nearest nodes find the best parent to newNode
+            self.nodeList[i + 100] = newNode  # add newNode to nodeList
+            self.rewire(i + 100, newNode, nearinds)  # make newNode a parent of another node if necessary
+            self.nodeList[newNode.parent].children.add(i + 100)
 
-                nearinds = self.find_near_nodes(newNode, 5) # find nearest nodes to newNode
-                newNode = self.choose_parent(newNode, nearinds) # from that nearest nodes find the best parent to newNode
-                self.nodeList[i+100] = newNode # add newNode to nodeList
-                self.rewire(i+100, newNode, nearinds) # make newNode a parent of another node if necessary
-                self.nodeList[newNode.parent].children.add(i+100)
-
-                if len(self.nodeList) > self.maxIter:
-                    leaves = [ key for key, node in self.nodeList.items() if len(node.children) == 0 and len(self.nodeList[node.parent].children) > 1 ]
-                    if len(leaves) > 1:
-                        ind = leaves[random.randint(0, len(leaves)-1)]
-                        self.nodeList[self.nodeList[ind].parent].children.discard(ind)
-                        self.nodeList.pop(ind)
-                    else:
-                        leaves = [ key for key, node in self.nodeList.items() if len(node.children) == 0 ]
-                        ind = leaves[random.randint(0, len(leaves)-1)]
-                        self.nodeList[self.nodeList[ind].parent].children.discard(ind)
-                        self.nodeList.pop(ind)
-
-
-            i+=1
-
-
-            for e in pygame.event.get():
-                if e.type == pygame.MOUSEBUTTONDOWN:
-                    if e.button == 1:
-                        self.obstacleList.append((e.pos[0],e.pos[1],30,30))
-                        self.path_validation()
-                    elif e.button == 3:
-                        self.end.x = e.pos[0]
-                        self.end.y = e.pos[1]
-                        self.path_validation()
+            if len(self.nodeList) > self.maxIter:
+                leaves = [key for key, node in self.nodeList.items() if
+                          len(node.children) == 0 and len(self.nodeList[node.parent].children) > 1]
+                if len(leaves) > 1:
+                    ind = leaves[random.randint(0, len(leaves) - 1)]
+                    self.nodeList[self.nodeList[ind].parent].children.discard(ind)
+                    self.nodeList.pop(ind)
+                else:
+                    leaves = [key for key, node in self.nodeList.items() if len(node.children) == 0]
+                    ind = leaves[random.randint(0, len(leaves) - 1)]
+                    self.nodeList[self.nodeList[ind].parent].children.discard(ind)
+                    self.nodeList.pop(ind)
 
     def path_validation(self):
         lastIndex = self.get_best_last_index()
@@ -117,7 +96,6 @@ class RRT():
             else:
                 dlist.append(float("inf"))
 
-
         mincost = min(dlist)
         minind = nearinds[dlist.index(mincost)]
 
@@ -129,24 +107,27 @@ class RRT():
         newNode.parent = minind
         return newNode
 
-    def steer(self, rnd, nind):
+    def steer(self, rnd, rnd_node):
 
         # expand tree
-        nearestNode = self.nodeList[nind]
-        theta = math.atan2(rnd[1] - nearestNode.y, rnd[0] - nearestNode.x)
-        newNode = Node(nearestNode.x, nearestNode.y)
-        newNode.x += self.expandDis * math.cos(theta)
-        newNode.y += self.expandDis * math.sin(theta)
+        theta = math.atan2(rnd[1] - rnd_node.hgg_node[1], rnd[0] - rnd_node.hgg_node[0])
+        direction_node = rnd_node
+        direction_node.hgg_node[0] += self.expandDis * math.cos(theta)
+        direction_node.hgg_node[1] += self.expandDis * math.sin(theta)
+        direction_node.hgg_node = self.graph.coords2gridpoint(direction_node.hgg_node)
 
-        newNode.cost = nearestNode.cost + self.expandDis
-        newNode.parent = nind 
-        return newNode
+        direction_node.cost = rnd_node.cost + self.expandDis
+        direction_node.parent = rnd_node
+        return direction_node
 
     def get_random_point(self):
         if random.randint(0, 100) > self.goalSampleRate:
-            rnd = [random.uniform(self.graph.x_min, self.graph.x_max), random.uniform(self.graph.y_min, self.graph.y_max)]
+            rnd = [random.uniform(self.graph.x_min, self.graph.x_max),
+                   random.uniform(self.graph.y_min, self.graph.y_max),
+                   random.uniform(self.graph.z_min, self.graph.z_max)]
         else:  # goal point sampling
-            rnd = [self.end.x, self.end.y]
+            # change end.x to end.get_x_pos_of_a_goal
+            rnd = [self.end.x, self.end.y, self.end.z]
         return rnd
 
     def get_best_last_index(self):
@@ -176,13 +157,15 @@ class RRT():
     def calc_dist_to_goal(self, x, y):
         return np.linalg.norm([x - self.end.x, y - self.end.y])
 
-    def find_near_nodes(self, newNode, value):
+    def find_near_nodes(self, direction_node, value):
         r = self.expandDis * value
-
-        dlist = np.subtract( np.array([ (node.x, node.y) for node in self.nodeList.values() ]), (newNode.x,newNode.y))**2
+        # check if node[0] works for the initial position
+        dlist = np.subtract(np.array([(node[0], node[1]) for node in self.created_nodes.values()]),
+                            (direction_node.hgg_node[0], direction_node.hgg_node[1])) ** 2
         dlist = np.sum(dlist, axis=1)
         nearinds = np.where(dlist <= r ** 2)
-        nearinds = np.array(list(self.nodeList.keys()))[nearinds]
+        # indices (keys) of created nodes
+        nearinds = np.array(list(self.created_nodes.keys()))[nearinds]
 
         return nearinds
 
@@ -207,9 +190,9 @@ class RRT():
 
     def check_collision_extend(self, nix, niy, theta, d):
 
-        tmpNode = Node(nix,niy)
+        tmpNode = Node(nix, niy)
 
-        for i in range(int(d/5)):
+        for i in range(int(d / 5)):
             tmpNode.x += 5 * math.cos(theta)
             tmpNode.y += 5 * math.sin(theta)
             if not self.__CollisionCheck(tmpNode, self.obstacleList):
@@ -217,63 +200,24 @@ class RRT():
 
         return True
 
-    def DrawGraph(self, rnd=None):
-        u"""
-        Draw Graph
-        """
-        screen.fill((255, 255, 255))
-        for node in self.nodeList.values():
-            if node.parent is not None:
-                pygame.draw.line(screen,(0,255,0),[self.nodeList[node.parent].x,self.nodeList[node.parent].y],[node.x,node.y])
-
-        for node in self.nodeList.values():
-            if len(node.children) == 0: 
-                pygame.draw.circle(screen, (255,0,255), [int(node.x),int(node.y)], 2)
-                
-
-        for(sx,sy,ex,ey) in self.obstacleList:
-            pygame.draw.rect(screen,(0,0,0), [(sx,sy),(ex,ey)])
-
-        pygame.draw.circle(screen, (255,0,0), [self.start.x, self.start.y], 10)
-        pygame.draw.circle(screen, (0,0,255), [self.end.x, self.end.y], 10)
-
-        lastIndex = self.get_best_last_index()
-        if lastIndex is not None:
-            path = self.gen_final_course(lastIndex)
-
-            ind = len(path)
-            while ind > 1:
-                pygame.draw.line(screen,(255,0,0),path[ind-2],path[ind-1])
-                ind-=1
-
-        pygame.display.update()
+    # def collision_check(self, node):
+    #     # obstacles is list with entries of form: [m_x, m_y, m_z, l, w, h], same format as in mujoco
+    #     for [m_x, m_y, m_z, l, w, h] in self.obstacle_list:
+    #         m_x, m_y, m_z, l, w, h = sx + 2, sy + 2, ex + 2, ey + 2
+    #         if node.x > sx and node.x < sx + ex:
+    #             if node.y > sy and node.y < sy + ey:
+    #                 return False
+    #
+    #     return True
 
 
-    def GetNearestListIndex(self, rnd):
-        dlist = np.subtract( np.array([ (node.x, node.y) for node in self.nodeList.values() ]), (rnd[0],rnd[1]))**2
-        dlist = np.sum(dlist, axis=1)
-        minind = list(self.nodeList.keys())[np.argmin(dlist)]
-        return minind
-
-    def __CollisionCheck(self, node, obstacleList):
-
-        for(sx,sy,ex,ey) in obstacleList:
-            sx,sy,ex,ey = sx+2,sy+2,ex+2,ey+2
-            if node.x > sx and node.x < sx+ex:
-                if node.y > sy and node.y < sy+ey:
-                    return False
-
-        return True  # safe
-
-
-class Node():
+class Node:
     """
     RRT Node
     """
 
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+    def __init__(self, hgg_node):
+        self.hgg_node = hgg_node
         self.cost = 0.0
         self.parent = None
         self.children = set()
@@ -295,7 +239,7 @@ def main():
     # Set Initial parameters
     rrt = RRT(start=[20, 580], goal=[540, 150],
               randArea=[XDIM, YDIM], obstacleList=obstacleList)
-    path = rrt.Planning(animation=show_animation)
+    path = rrt.Planning()
 
 
 if __name__ == '__main__':
