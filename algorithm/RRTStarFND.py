@@ -14,7 +14,6 @@ class RRT:
 
         self.start = Node(initial_pos)
         self.end = Node(goal_pos)
-
         # obstacles is list with entries of form: [m_x, m_y, m_z, l, w, h], same format as in mujoco
         self.obstacle_list = graph.obstacles
         # 0 entry means "no obstacle", 1 entry means "obstacle", at the corresponding vertex

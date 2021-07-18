@@ -1,5 +1,7 @@
 import copy
 import numpy as np
+
+from algorithm import RRTStarFND
 from envs import make_env
 from envs.utils import goal_distance
 from algorithm.replay_buffer import Trajectory, goal_concat
@@ -381,8 +383,8 @@ class HGGLearner:
 			current = Trajectory(obs)
 			trajectory = [obs['achieved_goal'].copy()]
 			if args.vae_dist_help:
-				trajectory_goals_latents = [obs['achieved_goal_latent'].copy()]
-				trajectory_obstacles_latents = [obs['obstacle_latent'].copy()]
+				trajectory_goals_latents = [obs['achieved_gobstacle_latentoal_latent'].copy()]
+				trajectory_obstacles_latents = [obs[''].copy()]
 				trajectory_obstacles_latents_sizes = [obs['obstacle_size_latent'].copy()]
 			## just for video
 			#tr_env_images = [take_env_image(self.env_List[i], args.img_size)]
@@ -390,7 +392,7 @@ class HGGLearner:
 			for timestep in range(args.timesteps):
 				# get action from the policy
 				action = agent.step(obs, explore=True)
-				#action = acs[timestep]
+				# action = acs[timestep]
 				obs, reward, done, info = self.env_List[i].step(action)
 				trajectory.append(obs['achieved_goal'].copy())
 				if args.vae_dist_help:
@@ -407,6 +409,11 @@ class HGGLearner:
 					args.imaginary_buffer.store_im_info(im_info, env=self.env_List[i])
 				if done or stop_trajectory: break
 			achieved_trajectories.append(np.array(trajectory))
+
+			# use planning algorithm
+			print("init state: " + str(init_state), "desired_goals: " + desired_goals[i])
+			rrt = RRTStarFND.RRT(init_state, desired_goals[i], self.sampler.graph)
+			achieved_trajectories.append(rrt)
 			achieved_init_states.append(init_state)
 			if args.vae_dist_help:
 				achieved_trajectory_goals_latents.append(np.array(trajectory_goals_latents))
