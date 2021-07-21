@@ -383,8 +383,8 @@ class HGGLearner:
 			current = Trajectory(obs)
 			trajectory = [obs['achieved_goal'].copy()]
 			if args.vae_dist_help:
-				trajectory_goals_latents = [obs['achieved_gobstacle_latentoal_latent'].copy()]
-				trajectory_obstacles_latents = [obs[''].copy()]
+				trajectory_goals_latents = [obs['achieved_goal_latent'].copy()]
+				trajectory_obstacles_latents = [obs['obstacle_latent'].copy()]
 				trajectory_obstacles_latents_sizes = [obs['obstacle_size_latent'].copy()]
 			## just for video
 			#tr_env_images = [take_env_image(self.env_List[i], args.img_size)]
@@ -411,8 +411,12 @@ class HGGLearner:
 			achieved_trajectories.append(np.array(trajectory))
 
 			# use planning algorithm
-			print("init state: " + str(init_state), "desired_goals: " + desired_goals[i])
-			rrt = RRTStarFND.RRT(init_state, desired_goals[i], self.sampler.graph)
+			print("current: " + str(current))
+			print("trajectory: " + str(trajectory))
+			print("init state: " + str(init_state))
+			print("desired_goals: " + str(self.env_List[i].goal))
+			print(str(current))
+			rrt = RRTStarFND.RRT(init_state, self.env_List[i].goal, self.sampler.graph)
 			achieved_trajectories.append(rrt)
 			achieved_init_states.append(init_state)
 			if args.vae_dist_help:

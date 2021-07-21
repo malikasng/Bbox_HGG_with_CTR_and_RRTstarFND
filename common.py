@@ -59,7 +59,7 @@ def get_args(do_just_test=False):#this parameter is just used for the name
 			parser.add_argument('--init_rotation', help='initial rotation in hand environments', type=np.float32, default=0.25)
 
 	args, _ = parser.parse_known_args()
-	if 'RewMod' in args.goal:
+	if 'RewMod' in args.hgoal:
 		parser.add_argument('--rew_mod_val', help='value to subtract on collision', type=np.float32, default=-5.)
 	if args.extra_sec:
 		parser.add_argument('--sec_dist', help='security distance around obstacle', type=np.float32, default=None)

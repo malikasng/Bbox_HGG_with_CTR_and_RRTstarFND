@@ -10,7 +10,7 @@ class RRT:
     Class for RRT Planning
     """
 
-    def __init__(self, initial_pos, goal_pos, graph: DistanceGraph, expandDis=1.0, goalSampleRate=10):
+    def __init__(self, initial_pos, goal_pos, graph: DistanceGraph, expandDis=2.0, goalSampleRate=10):
 
         self.start = Node(initial_pos)
         self.end = Node(goal_pos)
