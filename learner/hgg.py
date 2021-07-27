@@ -419,13 +419,15 @@ class HGGLearner:
 
             # use planning algorithm
             # print("current: " + str(current))
-            print("trajectory: " + str(trajectory))
-            print("trajectory: " + str(trajectory[0]))
+            # print("trajectory: " + str(trajectory))
+            # print("trajectory: " + str(trajectory[0]))
             # print("init state: " + str(init_state))
-            print("goal: " + str(self.env_List[i].goal))
+            # print("goal: " + str(self.env_List[i].goal))
             print("obs: " + str(obs))
-            rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.distance_estimator)
-            achieved_trajectories.append(rrt)
+            rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, obs['observation']['page_31'])
+            path_rrt = rrt.plan()
+            print("rrt: " + str(path_rrt))
+            buffer.store_trajectory(path_rrt)
             achieved_init_states.append(init_state)
             if args.vae_dist_help:
                 achieved_trajectory_goals_latents.append(np.array(trajectory_goals_latents))
@@ -434,6 +436,7 @@ class HGGLearner:
                 achieved_trajectory_obstacle_latents_sizes.append(np.array(trajectory_obstacles_latents_sizes))
 
             # Trajectory is stored in replay buffer, replay buffer can be normal or EBP
+            print("current: " + str(current))
             buffer.store_trajectory(current)
             # update normalizer
             norm_batch = buffer.sample_batch()
