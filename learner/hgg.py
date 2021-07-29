@@ -378,9 +378,14 @@ class HGGLearner:
 
             # store goals in explore_goals list to check whether goals are within goal space later
             explore_goals.append(explore_goal)
-
             # store path of RRT*FND as explore goals
-
+            start_position = [obs['achieved_goal'].copy()][0]
+            rrt = RRTStarFND.RRT(start_position, self.env_List[i].goal, self.args.dist_estimator, None)
+            # rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, obs['observation']['page_31'])
+            path_rrt = rrt.plan()
+            print(path_rrt)
+            explore_goals.append(path_rrt)
+            print(explore_goals)
             test_goal = self.env.generate_goal()
             test_goals.append(test_goal)
 
@@ -391,7 +396,6 @@ class HGGLearner:
                 goal_list.append(explore_goal.copy())
 
             current = Trajectory(obs)
-            trajectory_rrt = Trajectory(obs)
             trajectory = [obs['achieved_goal'].copy()]
             if args.vae_dist_help:
                 trajectory_goals_latents = [obs['achieved_goal_latent'].copy()]
@@ -405,7 +409,6 @@ class HGGLearner:
                 action = agent.step(obs, explore=True)
                 # action = acs[timestep]
                 obs, reward, done, info = self.env_List[i].step(action)
-                print(str(obs['achieved_goal']))
                 trajectory.append(obs['achieved_goal'].copy())
                 if args.vae_dist_help:
                     trajectory_goals_latents.append(obs['achieved_goal_latent'].copy())
@@ -421,16 +424,6 @@ class HGGLearner:
                     args.imaginary_buffer.store_im_info(im_info, env=self.env_List[i])
                 if done or stop_trajectory: break
             achieved_trajectories.append(np.array(trajectory))
-
-            # use planning algorithm
-            rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, trajectory_rrt, None)
-            # rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, obs['observation']['page_31'])
-            trajectory_rrt, path_rrt = rrt.plan()
-            trajectory_rrt.ep['obs'] = current.ep['obs'].copy()
-            trajectory_rrt.ep['obs']['achieved_goal'] = path_rrt[len(path_rrt)-1]
-            print("rrt: " + str(trajectory_rrt))
-            print("obs: " + str(current.ep['obs']), "rews: " + str(current.ep['rews']), "acts: " + str(current.ep['acts']), "done: " + str(current.ep['done']),)
-            buffer.store_trajectory(trajectory_rrt)
             achieved_init_states.append(init_state)
             if args.vae_dist_help:
                 achieved_trajectory_goals_latents.append(np.array(trajectory_goals_latents))

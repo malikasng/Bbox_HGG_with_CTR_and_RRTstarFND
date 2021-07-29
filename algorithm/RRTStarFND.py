@@ -2,28 +2,23 @@ import random
 import math
 import numpy as np
 
-from algorithm.replay_buffer import Trajectory
 
 class RRT:
     """
     Class for RRT Planning
     """
 
-    def __init__(self, initial_pos, goal_pos, graph, trajectory: Trajectory, real_obs_info, expandDis=0.1, goalSampleRate=10):
+    def __init__(self, initial_pos, goal_pos, graph, real_obs_info, expandDis=0.1, goalSampleRate=10):
 
         self.start = Node(initial_pos[0], initial_pos[1])
         self.end = Node(goal_pos[0], goal_pos[1])
         # obstacles is list with entries of form: [m_x, m_y, m_z, l, w, h], same format as in mujoco
         self.obstacle_list = graph.obstacles
-        self.obstacle_info = real_obs_info
-        print("obst_indo: " + str(self.obstacle_info))
-        print("obstacles: " + str(self.obstacle_list))
         # 0 entry means "no obstacle", 1 entry means "obstacle", at the corresponding vertex
         # is_obstacle fct
         self.graph = graph
         self.expandDis = expandDis
         self.goalSampleRate = goalSampleRate
-        self.trajectory = trajectory
 
     def plan(self):
         """
@@ -68,15 +63,7 @@ class RRT:
                 self.node_list.pop(ind)
 
         best_path_to_goal = self.create_path()
-        done = []
-        rews = []
-        for i in range(len(best_path_to_goal)-1):
-            done.append([0.0])
-            rews.append([-1.0])
-        done.append([1.0])
-        rews.append([0.0])
-        self.trajectory.ep['done'] = done
-        return self.trajectory, best_path_to_goal
+        return best_path_to_goal
 
     def create_path(self):
         last_index = self.get_best_last_index()
