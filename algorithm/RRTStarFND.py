@@ -228,11 +228,10 @@ class RRT:
     def is_obstacle(self, node_x, node_y):
         # obstacle_list is a list with entries of form: [max_left, min_right, max_down, min_up]
         for [max_left, min_right, max_down, min_up] in self.obstacle_list:
-            if node.x > max_left and node.x < sx + ex:
-                if node.y > sy and node.y < sy + ey:
-                    return False
-
-        return True
+            if node_x > max_left and node_x < min_right:
+                if node_y > max_down and node_y < min_up:
+                    return True
+        return False
 
 
 class Node:

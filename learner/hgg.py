@@ -388,6 +388,7 @@ class HGGLearner:
                 goal_list.append(explore_goal.copy())
 
             current = Trajectory(obs)
+            trajectory_rrt = Trajectory(obs)
             trajectory = [obs['achieved_goal'].copy()]
             if args.vae_dist_help:
                 trajectory_goals_latents = [obs['achieved_goal_latent'].copy()]
@@ -401,6 +402,7 @@ class HGGLearner:
                 action = agent.step(obs, explore=True)
                 # action = acs[timestep]
                 obs, reward, done, info = self.env_List[i].step(action)
+                print(str(obs['achieved_goal']))
                 trajectory.append(obs['achieved_goal'].copy())
                 if args.vae_dist_help:
                     trajectory_goals_latents.append(obs['achieved_goal_latent'].copy())
@@ -423,10 +425,13 @@ class HGGLearner:
             # print("trajectory: " + str(trajectory[0]))
             # print("init state: " + str(init_state))
             # print("goal: " + str(self.env_List[i].goal))
-            print("obs: " + str(obs))
-            rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, obs['observation']['page_31'])
+            # print("obs: " + str(obs))
+            rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, None)
+            # rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, obs['observation']['page_31'])
             path_rrt = rrt.plan()
+            # trajectory_rrt.
             print("rrt: " + str(path_rrt))
+            print("current: " + str(current))
             buffer.store_trajectory(path_rrt)
             achieved_init_states.append(init_state)
             if args.vae_dist_help:
@@ -436,7 +441,6 @@ class HGGLearner:
                 achieved_trajectory_obstacle_latents_sizes.append(np.array(trajectory_obstacles_latents_sizes))
 
             # Trajectory is stored in replay buffer, replay buffer can be normal or EBP
-            print("current: " + str(current))
             buffer.store_trajectory(current)
             # update normalizer
             norm_batch = buffer.sample_batch()
