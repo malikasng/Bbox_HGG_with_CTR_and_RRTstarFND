@@ -378,6 +378,9 @@ class HGGLearner:
 
             # store goals in explore_goals list to check whether goals are within goal space later
             explore_goals.append(explore_goal)
+
+            # store path of RRT*FND as explore goals
+
             test_goal = self.env.generate_goal()
             test_goals.append(test_goal)
 
@@ -420,19 +423,14 @@ class HGGLearner:
             achieved_trajectories.append(np.array(trajectory))
 
             # use planning algorithm
-            # print("current: " + str(current))
-            # print("trajectory: " + str(trajectory))
-            # print("trajectory: " + str(trajectory[0]))
-            # print("init state: " + str(init_state))
-            # print("goal: " + str(self.env_List[i].goal))
-            # print("obs: " + str(obs))
-            rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, None)
+            rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, trajectory_rrt, None)
             # rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, obs['observation']['page_31'])
-            path_rrt = rrt.plan()
-            # trajectory_rrt.
-            print("rrt: " + str(path_rrt))
-            print("current: " + str(current))
-            buffer.store_trajectory(path_rrt)
+            trajectory_rrt, path_rrt = rrt.plan()
+            trajectory_rrt.ep['obs'] = current.ep['obs'].copy()
+            trajectory_rrt.ep['obs']['achieved_goal'] = path_rrt[len(path_rrt)-1]
+            print("rrt: " + str(trajectory_rrt))
+            print("obs: " + str(current.ep['obs']), "rews: " + str(current.ep['rews']), "acts: " + str(current.ep['acts']), "done: " + str(current.ep['done']),)
+            buffer.store_trajectory(trajectory_rrt)
             achieved_init_states.append(init_state)
             if args.vae_dist_help:
                 achieved_trajectory_goals_latents.append(np.array(trajectory_goals_latents))

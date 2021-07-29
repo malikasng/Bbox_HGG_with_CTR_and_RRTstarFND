@@ -2,15 +2,14 @@ import random
 import math
 import numpy as np
 
-from envs.distance_graph import DistanceGraph
-
+from algorithm.replay_buffer import Trajectory
 
 class RRT:
     """
     Class for RRT Planning
     """
 
-    def __init__(self, initial_pos, goal_pos, graph, real_obs_info, expandDis=0.1, goalSampleRate=10):
+    def __init__(self, initial_pos, goal_pos, graph, trajectory: Trajectory, real_obs_info, expandDis=0.1, goalSampleRate=10):
 
         self.start = Node(initial_pos[0], initial_pos[1])
         self.end = Node(goal_pos[0], goal_pos[1])
@@ -24,6 +23,7 @@ class RRT:
         self.graph = graph
         self.expandDis = expandDis
         self.goalSampleRate = goalSampleRate
+        self.trajectory = trajectory
 
     def plan(self):
         """
@@ -68,7 +68,15 @@ class RRT:
                 self.node_list.pop(ind)
 
         best_path_to_goal = self.create_path()
-        return best_path_to_goal
+        done = []
+        rews = []
+        for i in range(len(best_path_to_goal)-1):
+            done.append([0.0])
+            rews.append([-1.0])
+        done.append([1.0])
+        rews.append([0.0])
+        self.trajectory.ep['done'] = done
+        return self.trajectory, best_path_to_goal
 
     def create_path(self):
         last_index = self.get_best_last_index()
