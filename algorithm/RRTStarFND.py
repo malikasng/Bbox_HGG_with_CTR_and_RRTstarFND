@@ -8,7 +8,7 @@ class RRT:
     Class for RRT Planning
     """
 
-    def __init__(self, initial_pos, goal_pos, graph, real_obs_info, expandDis=0.1, goalSampleRate=10):
+    def __init__(self, initial_pos, goal_pos, graph, z_dim, real_obs_info, expand_dis=0.05, goal_sample_rate=10, max_iter=100):
 
         self.start = Node(initial_pos[0], initial_pos[1])
         self.end = Node(goal_pos[0], goal_pos[1])
@@ -17,15 +17,17 @@ class RRT:
         # 0 entry means "no obstacle", 1 entry means "obstacle", at the corresponding vertex
         # is_obstacle fct
         self.graph = graph
-        self.expandDis = expandDis
-        self.goalSampleRate = goalSampleRate
+        self.z_dim = z_dim
+        self.expand_dis = expand_dis
+        self.goal_sample_rate = goal_sample_rate
+        self.max_iter = max_iter
 
     def plan(self):
         """
         Path planning
         """
         self.node_list = {0:self.start}
-        n = 1000
+        n = 200
         for i in range(n):
             # get random point of the env
             rnd = self.get_random_point()
@@ -42,25 +44,27 @@ class RRT:
             nearinds = self.find_near_nodes(direction_node, 2)
             # from that nearest nodes find the best parent to newNode
             direction_node = self.choose_parent(direction_node, nearinds)
-            # add direction_node to nodeList
-            self.node_list[i + 100] = direction_node
-            # make direction_node a parent of another node if necessary
-            self.rewire(i + 100, direction_node, nearinds)
-            self.node_list[direction_node.parent].children.add(i + 100)
-            self.path_validation()
 
+            if not self.is_obstacle(direction_node.x, direction_node.y):  # if it does not collide
+                # add direction_node to nodeList
+                self.node_list[i + 100] = direction_node
+                # make direction_node a parent of another node if necessary
+                self.rewire(i + 100, direction_node, nearinds)
+                self.node_list[direction_node.parent].children.add(i + 100)
+                self.path_validation()
 
-            leaves = [key for key, node in self.node_list.items() if
-                      len(node.children) == 0 and len(self.node_list[node.parent].children) > 1]
-            if len(leaves) > 1:
-                ind = leaves[random.randint(0, len(leaves) - 1)]
-                self.node_list[self.node_list[ind].parent].children.discard(ind)
-                self.node_list.pop(ind)
-            else:
-                leaves = [key for key, node in self.node_list.items() if len(node.children) == 0]
-                ind = leaves[random.randint(0, len(leaves) - 1)]
-                self.node_list[self.node_list[ind].parent].children.discard(ind)
-                self.node_list.pop(ind)
+                if len(self.node_list) > self.max_iter:
+                    leaves = [key for key, node in self.node_list.items() if
+                              len(node.children) == 0 and len(self.node_list[node.parent].children) > 1]
+                    if len(leaves) > 1:
+                        ind = leaves[random.randint(0, len(leaves) - 1)]
+                        self.node_list[self.node_list[ind].parent].children.discard(ind)
+                        self.node_list.pop(ind)
+                    else:
+                        leaves = [key for key, node in self.node_list.items() if len(node.children) == 0]
+                        ind = leaves[random.randint(0, len(leaves) - 1)]
+                        self.node_list[self.node_list[ind].parent].children.discard(ind)
+                        self.node_list.pop(ind)
 
         best_path_to_goal = self.create_path()
         return best_path_to_goal
@@ -84,14 +88,14 @@ class RRT:
                 # dy = self.node_list[nodeInd].y - self.node_list[lastIndex].y
                 # d = math.sqrt(dx ** 2 + dy ** 2)
                 # theta = math.atan2(dy, dx)
-                if self.graph.is_obstacle(self.node_list[last_index].x, self.node_list[last_index].y, self.node_list[last_index].hgg_node[2]):
+                if self.is_obstacle(self.node_list[last_index].x, self.node_list[last_index].y):
                     self.node_list[last_index].children.discard(node_ind)
                     self.remove_branch(node_ind)
 
-    def remove_branch(self, nodeInd):
-        for ix in self.node_list[nodeInd].children:
+    def remove_branch(self, node_ind):
+        for ix in self.node_list[node_ind].children:
             self.remove_branch(ix)
-        self.node_list.pop(nodeInd)
+        self.node_list.pop(node_ind)
 
     def choose_parent(self, direction_node, nearinds):
         if len(nearinds) == 0:
@@ -115,7 +119,6 @@ class RRT:
         minind = nearinds[dlist.index(mincost)]
 
         if mincost == float("inf"):
-            print("mincost is inf")
             return direction_node
 
         direction_node.cost = mincost
@@ -127,15 +130,15 @@ class RRT:
         nearestNode = self.node_list[nind]
         theta = math.atan2(rnd[1] - nearestNode.y, rnd[0] - nearestNode.x)
         newNode = Node(nearestNode.x, nearestNode.y)
-        newNode.x += self.expandDis * math.cos(theta)
-        newNode.y += self.expandDis * math.sin(theta)
+        newNode.x += self.expand_dis * math.cos(theta)
+        newNode.y += self.expand_dis * math.sin(theta)
 
-        newNode.cost = nearestNode.cost + self.expandDis
+        newNode.cost = nearestNode.cost + self.expand_dis
         newNode.parent = nind
         return newNode
 
     def get_random_point(self):
-        if random.randint(0, 100) > self.goalSampleRate:
+        if random.randint(0, 100) > self.goal_sample_rate:
             rnd = [random.uniform(-1, 1),
                    random.uniform(-1, 1)]
         else:  # goal point sampling
@@ -146,7 +149,7 @@ class RRT:
     def get_best_last_index(self):
 
         disglist = [(key, self.calc_dist_to_goal(node.x, node.y)) for key, node in self.node_list.items()]
-        goalinds = [key for key, distance in disglist if distance <= self.expandDis]
+        goalinds = [key for key, distance in disglist if distance <= self.expand_dis]
 
         if len(goalinds) == 0:
             return None
@@ -159,20 +162,19 @@ class RRT:
         return None
 
     def gen_final_course(self, goalind):
-        # check if self.start.x works
-        path = [[self.end.x, self.end.y]]
+        path = [np.array([self.end.x, self.end.y, self.z_dim])]
         while self.node_list[goalind].parent is not None:
             node = self.node_list[goalind]
-            path.append([node.x, node.y])
+            path.append(np.array([node.x, node.y, self.z_dim]))
             goalind = node.parent
-        path.append([self.start.x, self.start.y])
+        path.append(np.array([self.start.x, self.start.y, self.z_dim]))
         return path
 
     def calc_dist_to_goal(self, x, y):
         return np.linalg.norm([x - self.end.x, y - self.end.y])
 
     def find_near_nodes(self, direction_node, value):
-        r = self.expandDis * value
+        r = self.expand_dis * value
         # check if node[0] works for the initial position
         dlist = np.subtract(np.array([(node.x, node.y) for node in self.node_list.values()]),
                             (direction_node.x, direction_node.y)) ** 2
@@ -196,7 +198,7 @@ class RRT:
 
             if nearNode.cost > scost:
                 # theta = math.atan2(dy, dx)
-                if not self.graph.is_obstacle(nearNode.x, nearNode.y, nearNode.hgg_node[2]):
+                if not self.is_obstacle(nearNode.x, nearNode.y):
                     self.node_list[nearNode.parent].children.discard(i)
                     nearNode.parent = direction_node_ind
                     nearNode.cost = scost

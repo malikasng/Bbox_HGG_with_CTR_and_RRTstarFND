@@ -380,12 +380,12 @@ class HGGLearner:
             explore_goals.append(explore_goal)
             # store path of RRT*FND as explore goals
             start_position = [obs['achieved_goal'].copy()][0]
-            rrt = RRTStarFND.RRT(start_position, self.env_List[i].goal, self.args.dist_estimator, None)
+            z_dim = explore_goal[2]
+            rrt = RRTStarFND.RRT(start_position, self.env_List[i].goal, self.args.dist_estimator, z_dim, None)
             # rrt = RRTStarFND.RRT(trajectory[0], self.env_List[i].goal, self.args.dist_estimator, obs['observation']['page_31'])
             path_rrt = rrt.plan()
-            print(path_rrt)
-            explore_goals.append(path_rrt)
-            print(explore_goals)
+            if path_rrt is not None:
+                np.concatenate(explore_goals, path_rrt)
             test_goal = self.env.generate_goal()
             test_goals.append(test_goal)
 
