@@ -8,7 +8,7 @@ class RRT:
     Class for RRT Planning
     """
 
-    def __init__(self, initial_pos, goal_pos, graph, z_dim, real_obs_info, expand_dis=0.05, goal_sample_rate=10, max_iter=100):
+    def __init__(self, initial_pos, goal_pos, graph, z_dim, real_obs_info, expand_dis=0.07, goal_sample_rate=10, max_iter=100):
 
         self.start = Node(initial_pos[0], initial_pos[1])
         self.end = Node(goal_pos[0], goal_pos[1])
