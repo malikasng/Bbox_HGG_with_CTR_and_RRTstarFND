@@ -351,7 +351,7 @@ class HGGLearner:
         while len(planned_paths) < args.episodes:
             k = 0
             while planned_path is None and k < 200:
-                i = np.random.randint(0, args.episodes-1)
+                i = np.random.randint(0, args.episodes - 1)
                 # print(desired_goals[i])
                 rrt = RRTStarFND.RRT(start_position, desired_goals[i], self.args.dist_estimator, 0.425, None)
                 planned_path = rrt.plan()
