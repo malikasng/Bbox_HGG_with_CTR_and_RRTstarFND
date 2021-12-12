@@ -1,7 +1,6 @@
-# Bounding Box Based Hindsight Goal Generation
+# Dynamic Obstacle Avoidance via Motion Planning and Colliding Transition Relabeling for Reinforcement Learning
 
-This is the TensorFlow implementation for the thesis Goal-Based Hindsight Goal Generation for Robotic Object Manipulation with Sparse-Reward Deep Reinforcement Learning (Matthias Brucker, 2020)
-It is based on the implementation of the HGG paper [Exploration via Hindsight Goal Generation](http://arxiv.org/abs/1906.04279) accepted by NeurIPS 2019.
+This is the PyTorch implementation of the Dynamic Obstacle Avoidance via Motion Planning and Colliding Transition Relabeling with Sparse-Reward Deep Reinforcement Learning (Malika Sanhinova, 2021). It is based on the implementation of the HGG paper [Exploration via Hindsight Goal Generation](http://arxiv.org/abs/1906.04279) accepted by NeurIPS 2019.
 
 
 
